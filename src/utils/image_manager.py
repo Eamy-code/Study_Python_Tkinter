@@ -1,4 +1,6 @@
 import os
+import shutil
+from PIL import Image
 
 # 画像管理クラス（コピー・リサイズ・ロード）
 class ImageManager:
@@ -50,3 +52,31 @@ class ImageManager:
             return ""
 
         return self.normalize_path(dest_path)
+    
+     # 画像を読み込む（失敗したらデフォルト画像）
+    def load_image(self, path):
+        # パスが無い場合 → デフォルト
+        if not path or not os.path.exists(path):
+            return Image.open(self.default_image_path)
+
+        try:
+            return Image.open(path)
+        except:
+            # 壊れた画像など例外時もデフォルト
+            return Image.open(self.default_image_path)
+
+    # 指定サイズにリサイズして返す
+    def resize_image(self, image, width, height):
+        return image.resize((width, height), Image.Resampling.LANCZOS)
+
+    # サムネイル画像を生成（一覧画面用）
+    def get_thumbnail(self, path, size=(150, 150)):
+        image = self.load_image(path)
+        return self.resize_image(image, size[0], size[1])
+
+    # 詳細画面用の大きめ画像を返す
+    def get_detail_image(self, path, size=(300, 200)):
+        image = self.load_image(path)
+        return self.resize_image(image, size[0], size[1])
+
+
