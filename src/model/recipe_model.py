@@ -52,3 +52,38 @@ class RecipeModel:
             return 1
         ids = [int(r["id"]) for r in recipes]
         return max(ids) + 1
+
+    # 材料9個・手順6個を必ず揃える
+    def ensure_fields(self, data):
+        # 材料補完
+        for i in range(1, 10):
+            key = f"ingredient{i}"
+            if key not in data or data[key] is None:
+                data[key] = ""
+
+        # 手順補完
+        for i in range(1, 7):
+            key = f"step{i}"
+            if key not in data or data[key] is None:
+                data[key] = ""
+
+        return data
+
+
+  # 新規登録（CSV 末尾に追加）
+    def insert(self, data):
+        recipes = self.load_all()
+
+        # 新しい ID を採番
+        new_id = self.next_id()
+        data["id"] = str(new_id)
+
+        # 必須フィールド補完
+        data = self.ensure_fields(data)
+
+        recipes.append(data)
+
+        # CSV へ保存
+        self.save_all(recipes)
+
+        return new_id
