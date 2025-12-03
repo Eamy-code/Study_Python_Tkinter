@@ -36,3 +36,19 @@ class RecipeModel:
             writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
             writer.writeheader()
             writer.writerows(recipes)
+            
+    # ID で 1件取得
+    def find_by_id(self, recipe_id):
+        recipes = self.load_all()
+        for r in recipes:
+            if r["id"] == str(recipe_id):
+                return r
+        return None
+
+    # 次のID（自動採番）
+    def next_id(self):
+        recipes = self.load_all()
+        if not recipes:
+            return 1
+        ids = [int(r["id"]) for r in recipes]
+        return max(ids) + 1
