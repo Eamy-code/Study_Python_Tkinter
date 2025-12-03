@@ -21,4 +21,18 @@ class RecipeModel:
                 writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
                 writer.writeheader()
 
-   
+   # CSV 全件読み込み
+    def load_all(self):
+        recipes = []
+        with open(self.CSV_PATH, "r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                recipes.append(row)
+        return recipes
+
+    # CSV 全件保存（上書き）
+    def save_all(self, recipes):
+        with open(self.CSV_PATH, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
+            writer.writeheader()
+            writer.writerows(recipes)
