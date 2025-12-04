@@ -1,67 +1,132 @@
-import csv
+import sqlite3
 import os
 
-# RecipeDesk の CSV データ管理クラス
+
+# SQLite を使ったレシピデータ管理クラス
 class RecipeModel:
 
-
-    CSV_PATH = "src/data/recipes.csv"
-    FIELDNAMES = [
-        "id",
-        "title",
-        "image_path",
-    ] + [f"ingredient{i}" for i in range(1, 10)] \
-      + [f"step{i}" for i in range(1, 7)]
-
     def __init__(self):
-        # CSV が存在しない場合は新規作成する
-        if not os.path.exists(self.CSV_PATH):
-            os.makedirs(os.path.dirname(self.CSV_PATH), exist_ok=True)
-            with open(self.CSV_PATH, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
-                writer.writeheader()
+        # DBファイルのパス
+        self.db_path = "src/database/recipe.db"
 
-   # CSV 全件読み込み
+        # ディレクトリが無ければ作成
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+
+        # テーブル初期化
+        self.init_db()
+
+    # DB接続を取得する
+    def get_connection(self):
+        return sqlite3.connect(self.db_path)
+
+    # レシピテーブルを作成（存在しなければ）
+    def init_db(self):
+        conn = self.get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS recipes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                image_path TEXT,
+                ingredient1 TEXT,
+                ingredient2 TEXT,
+                ingredient3 TEXT,
+                ingredient4 TEXT,
+                ingredient5 TEXT,
+                ingredient6 TEXT,
+                ingredient7 TEXT,
+                ingredient8 TEXT,
+                ingredient9 TEXT,
+                step1 TEXT,
+                step2 TEXT,
+                step3 TEXT,
+                step4 TEXT,
+                step5 TEXT,
+                step6 TEXT
+            )
+        """)
+
+        conn.commit()
+        conn.close()
+
+    # 全件取得
     def load_all(self):
-        recipes = []
-        with open(self.CSV_PATH, "r", newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                recipes.append(row)
-        return recipes
+        conn = self.get_connection()
+        cur = conn.cursor()
 
-    # CSV 全件保存（上書き）
-    def save_all(self, recipes):
-        with open(self.CSV_PATH, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
-            writer.writeheader()
-            writer.writerows(recipes)
-            
-    # ID で 1件取得
+        cur.execute("SELECT * FROM recipes ORDER BY id")
+        rows = cur.fetchall()
+
+        conn.close()
+
+        # Dict化して返す（CSV版と互換性のため）
+        dict_list = []
+        for r in rows:
+            dict_list.append({
+                "id": str(r[0]),
+                "title": r[1],
+                "image_path": r[2],
+                "ingredient1": r[3],
+                "ingredient2": r[4],
+                "ingredient3": r[5],
+                "ingredient4": r[6],
+                "ingredient5": r[7],
+                "ingredient6": r[8],
+                "ingredient7": r[9],
+                "ingredient8": r[10],
+                "ingredient9": r[11],
+                "step1": r[12],
+                "step2": r[13],
+                "step3": r[14],
+                "step4": r[15],
+                "step5": r[16],
+                "step6": r[17],
+            })
+
+        return dict_list
+
+    # IDで1件取得
     def find_by_id(self, recipe_id):
-        recipes = self.load_all()
-        for r in recipes:
-            if r["id"] == str(recipe_id):
-                return r
-        return None
+        conn = self.get_connection()
+        cur = conn.cursor()
 
-    # 次のID（自動採番）
-    def next_id(self):
-        recipes = self.load_all()
-        if not recipes:
-            return 1
-        ids = [int(r["id"]) for r in recipes]
-        return max(ids) + 1
+        cur.execute("SELECT * FROM recipes WHERE id=?", (recipe_id,))
+        r = cur.fetchone()
 
-    # 材料9個・手順6個を必ず揃える
+        conn.close()
+
+        if r is None:
+            return None
+
+        return {
+            "id": str(r[0]),
+            "title": r[1],
+            "image_path": r[2],
+            "ingredient1": r[3],
+            "ingredient2": r[4],
+            "ingredient3": r[5],
+            "ingredient4": r[6],
+            "ingredient5": r[7],
+            "ingredient6": r[8],
+            "ingredient7": r[9],
+            "ingredient8": r[10],
+            "ingredient9": r[11],
+            "step1": r[12],
+            "step2": r[13],
+            "step3": r[14],
+            "step4": r[15],
+            "step5": r[16],
+            "step6": r[17],
+        }
+
+    # 材料9個・手順6個を埋める
     def ensure_fields(self, data):
-        # 材料補完
         for i in range(1, 10):
             key = f"ingredient{i}"
             if key not in data or data[key] is None:
                 data[key] = ""
 
-        # 手順補完
         for i in range(1, 7):
             key = f"step{i}"
             if key not in data or data[key] is None:
@@ -69,21 +134,32 @@ class RecipeModel:
 
         return data
 
-
-  # 新規登録（CSV 末尾に追加）
+    # 新規登録
     def insert(self, data):
-        recipes = self.load_all()
-
-        # 新しい ID を採番
-        new_id = self.next_id()
-        data["id"] = str(new_id)
-
-        # 必須フィールド補完
         data = self.ensure_fields(data)
 
-        recipes.append(data)
+        conn = self.get_connection()
+        cur = conn.cursor()
 
-        # CSV へ保存
-        self.save_all(recipes)
+        cur.execute("""
+            INSERT INTO recipes (
+                title, image_path,
+                ingredient1, ingredient2, ingredient3, ingredient4, ingredient5,
+                ingredient6, ingredient7, ingredient8, ingredient9,
+                step1, step2, step3, step4, step5, step6
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data["title"],
+            data["image_path"],
+            data["ingredient1"], data["ingredient2"], data["ingredient3"],
+            data["ingredient4"], data["ingredient5"], data["ingredient6"],
+            data["ingredient7"], data["ingredient8"], data["ingredient9"],
+            data["step1"], data["step2"], data["step3"],
+            data["step4"], data["step5"], data["step6"],
+        ))
+
+        conn.commit()
+        new_id = cur.lastrowid
+        conn.close()
 
         return new_id
