@@ -2,164 +2,130 @@ import sqlite3
 import os
 
 
-# SQLite を使ったレシピデータ管理クラス
 class RecipeModel:
+    # SQLite でレシピ・材料・手順を管理するモデル
+
+    DB_PATH = "../src/data/recipe.db"
 
     def __init__(self):
-        # DBファイルのパス
-        self.db_path = "../src/database/recipe.db"
+        # DB フォルダが無ければ作成
+        os.makedirs(os.path.dirname(self.DB_PATH), exist_ok=True)
 
-        # ディレクトリが無ければ作成
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        # DB 接続とテーブル作成
+        self.conn = sqlite3.connect(self.DB_PATH)
+        self.conn.row_factory = sqlite3.Row
+        self.create_tables()
 
-        # テーブル初期化
-        self.init_db()
+    # テーブル作成
+    def create_tables(self):
+        cur = self.conn.cursor()
 
-    # DB接続を取得する
-    def get_connection(self):
-        return sqlite3.connect(self.db_path)
-
-    # レシピテーブルを作成（存在しなければ）
-    def init_db(self):
-        conn = self.get_connection()
-        cur = conn.cursor()
-
+        # recipes テーブル
         cur.execute("""
             CREATE TABLE IF NOT EXISTS recipes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
-                image_path TEXT,
-                ingredient1 TEXT,
-                ingredient2 TEXT,
-                ingredient3 TEXT,
-                ingredient4 TEXT,
-                ingredient5 TEXT,
-                ingredient6 TEXT,
-                ingredient7 TEXT,
-                ingredient8 TEXT,
-                ingredient9 TEXT,
-                step1 TEXT,
-                step2 TEXT,
-                step3 TEXT,
-                step4 TEXT,
-                step5 TEXT,
-                step6 TEXT
+                image_path TEXT
             )
         """)
 
-        conn.commit()
-        conn.close()
+        # ingredients テーブル
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS ingredients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                amount TEXT,
+                FOREIGN KEY(recipe_id) REFERENCES recipes(id)
+            )
+        """)
 
-    # 全件取得
+        # steps テーブル
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS steps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                step_no INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                FOREIGN KEY(recipe_id) REFERENCES recipes(id)
+            )
+        """)
+
+        self.conn.commit()
+
+    # レシピ登録（レシピ・材料・手順をまとめて保存）
+    def insert(self, data):
+        cur = self.conn.cursor()
+
+        # レシピ本体を挿入
+        cur.execute("""
+            INSERT INTO recipes (title, image_path)
+            VALUES (?, ?)
+        """, (data["title"], data["image_path"]))
+
+        recipe_id = cur.lastrowid
+
+        # 材料を挿入
+        for ing in data["ingredients"]:
+            cur.execute("""
+                INSERT INTO ingredients (recipe_id, name, amount)
+                VALUES (?, ?, ?)
+            """, (recipe_id, ing["name"], ing["amount"]))
+
+        # 作り方を挿入（順序付き）
+        for idx, step_text in enumerate(data["steps"], start=1):
+            cur.execute("""
+                INSERT INTO steps (recipe_id, step_no, text)
+                VALUES (?, ?, ?)
+            """, (recipe_id, idx, step_text))
+
+        self.conn.commit()
+        return recipe_id
+
+    # 全レシピ一覧を返す（タイトルと画像だけ）
     def load_all(self):
-        conn = self.get_connection()
-        cur = conn.cursor()
-
-        cur.execute("SELECT * FROM recipes ORDER BY id")
+        cur = self.conn.cursor()
+        cur.execute("SELECT * FROM recipes ORDER BY id ASC")
         rows = cur.fetchall()
+        return [dict(row) for row in rows]
 
-        conn.close()
-
-        # Dict化して返す（CSV版と互換性のため）
-        dict_list = []
-        for r in rows:
-            dict_list.append({
-                "id": str(r[0]),
-                "title": r[1],
-                "image_path": r[2],
-                "ingredient1": r[3],
-                "ingredient2": r[4],
-                "ingredient3": r[5],
-                "ingredient4": r[6],
-                "ingredient5": r[7],
-                "ingredient6": r[8],
-                "ingredient7": r[9],
-                "ingredient8": r[10],
-                "ingredient9": r[11],
-                "step1": r[12],
-                "step2": r[13],
-                "step3": r[14],
-                "step4": r[15],
-                "step5": r[16],
-                "step6": r[17],
-            })
-
-        return dict_list
-
-    # IDで1件取得
+    # 1レシピを詳細情報付きで返す
     def find_by_id(self, recipe_id):
-        conn = self.get_connection()
-        cur = conn.cursor()
+        cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM recipes WHERE id=?", (recipe_id,))
-        r = cur.fetchone()
-
-        conn.close()
-
-        if r is None:
+        # レシピ本体取得
+        cur.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,))
+        recipe = cur.fetchone()
+        if not recipe:
             return None
 
-        return {
-            "id": str(r[0]),
-            "title": r[1],
-            "image_path": r[2],
-            "ingredient1": r[3],
-            "ingredient2": r[4],
-            "ingredient3": r[5],
-            "ingredient4": r[6],
-            "ingredient5": r[7],
-            "ingredient6": r[8],
-            "ingredient7": r[9],
-            "ingredient8": r[10],
-            "ingredient9": r[11],
-            "step1": r[12],
-            "step2": r[13],
-            "step3": r[14],
-            "step4": r[15],
-            "step5": r[16],
-            "step6": r[17],
-        }
+        recipe = dict(recipe)
 
-    # 材料9個・手順6個を埋める
-    def ensure_fields(self, data):
-        for i in range(1, 10):
-            key = f"ingredient{i}"
-            if key not in data or data[key] is None:
-                data[key] = ""
-
-        for i in range(1, 7):
-            key = f"step{i}"
-            if key not in data or data[key] is None:
-                data[key] = ""
-
-        return data
-
-    # 新規登録
-    def insert(self, data):
-        data = self.ensure_fields(data)
-
-        conn = self.get_connection()
-        cur = conn.cursor()
-
+        # 材料一覧を取得
         cur.execute("""
-            INSERT INTO recipes (
-                title, image_path,
-                ingredient1, ingredient2, ingredient3, ingredient4, ingredient5,
-                ingredient6, ingredient7, ingredient8, ingredient9,
-                step1, step2, step3, step4, step5, step6
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data["title"],
-            data["image_path"],
-            data["ingredient1"], data["ingredient2"], data["ingredient3"],
-            data["ingredient4"], data["ingredient5"], data["ingredient6"],
-            data["ingredient7"], data["ingredient8"], data["ingredient9"],
-            data["step1"], data["step2"], data["step3"],
-            data["step4"], data["step5"], data["step6"],
-        ))
+            SELECT name, amount
+            FROM ingredients
+            WHERE recipe_id = ?
+        """, (recipe_id,))
+        recipe["ingredients"] = [dict(row) for row in cur.fetchall()]
 
-        conn.commit()
-        new_id = cur.lastrowid
-        conn.close()
+        # 手順一覧を取得（step_no 順）
+        cur.execute("""
+            SELECT step_no, text
+            FROM steps
+            WHERE recipe_id = ?
+            ORDER BY step_no ASC
+        """, (recipe_id,))
+        recipe["steps"] = [dict(row) for row in cur.fetchall()]
 
-        return new_id
+        return recipe
+
+    # レシピ削除（材料と手順も削除）
+    def delete(self, recipe_id):
+        cur = self.conn.cursor()
+
+        cur.execute("DELETE FROM ingredients WHERE recipe_id = ?", (recipe_id,))
+        cur.execute("DELETE FROM steps WHERE recipe_id = ?", (recipe_id,))
+        cur.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
+
+        self.conn.commit()
