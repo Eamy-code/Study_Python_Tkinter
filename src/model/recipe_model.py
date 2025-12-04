@@ -1,89 +1,151 @@
-import csv
+import sqlite3
 import os
 
-# RecipeDesk の CSV データ管理クラス
+
 class RecipeModel:
+    # SQLite でレシピ・材料・手順を管理するモデル
 
-
-    CSV_PATH = "src/data/recipes.csv"
-    FIELDNAMES = [
-        "id",
-        "title",
-        "image_path",
-    ] + [f"ingredient{i}" for i in range(1, 10)] \
-      + [f"step{i}" for i in range(1, 7)]
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.join(BASE_DIR, "../data/recipe.db")
 
     def __init__(self):
-        # CSV が存在しない場合は新規作成する
-        if not os.path.exists(self.CSV_PATH):
-            os.makedirs(os.path.dirname(self.CSV_PATH), exist_ok=True)
-            with open(self.CSV_PATH, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
-                writer.writeheader()
+        # DB フォルダが無ければ作成
+        os.makedirs(os.path.dirname(self.DB_PATH), exist_ok=True)
 
-   # CSV 全件読み込み
-    def load_all(self):
-        recipes = []
-        with open(self.CSV_PATH, "r", newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                recipes.append(row)
-        return recipes
+        # DB 接続
+        self.conn = sqlite3.connect(self.DB_PATH)
+        self.conn.row_factory = sqlite3.Row
 
-    # CSV 全件保存（上書き）
-    def save_all(self, recipes):
-        with open(self.CSV_PATH, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
-            writer.writeheader()
-            writer.writerows(recipes)
-            
-    # ID で 1件取得
-    def find_by_id(self, recipe_id):
-        recipes = self.load_all()
-        for r in recipes:
-            if r["id"] == str(recipe_id):
-                return r
-        return None
+        # テーブル作成
+        self.create_tables()
 
-    # 次のID（自動採番）
-    def next_id(self):
-        recipes = self.load_all()
-        if not recipes:
-            return 1
-        ids = [int(r["id"]) for r in recipes]
-        return max(ids) + 1
+    # テーブル作成
+    def create_tables(self):
+        cur = self.conn.cursor()
 
-    # 材料9個・手順6個を必ず揃える
-    def ensure_fields(self, data):
-        # 材料補完
-        for i in range(1, 10):
-            key = f"ingredient{i}"
-            if key not in data or data[key] is None:
-                data[key] = ""
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS recipes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                image_path TEXT
+            )
+        """)
 
-        # 手順補完
-        for i in range(1, 7):
-            key = f"step{i}"
-            if key not in data or data[key] is None:
-                data[key] = ""
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS ingredients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                amount TEXT,
+                FOREIGN KEY(recipe_id) REFERENCES recipes(id)
+            )
+        """)
 
-        return data
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS steps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                step_no INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                FOREIGN KEY(recipe_id) REFERENCES recipes(id)
+            )
+        """)
 
+        self.conn.commit()
 
-  # 新規登録（CSV 末尾に追加）
+    # レシピ登録
     def insert(self, data):
-        recipes = self.load_all()
+        cur = self.conn.cursor()
 
-        # 新しい ID を採番
-        new_id = self.next_id()
-        data["id"] = str(new_id)
+        cur.execute("""
+            INSERT INTO recipes (title, image_path)
+            VALUES (?, ?)
+        """, (data["title"], data["image_path"]))
 
-        # 必須フィールド補完
-        data = self.ensure_fields(data)
+        recipe_id = cur.lastrowid
 
-        recipes.append(data)
+        for ing in data["ingredients"]:
+            cur.execute("""
+                INSERT INTO ingredients (recipe_id, name, amount)
+                VALUES (?, ?, ?)
+            """, (recipe_id, ing["name"], ing["amount"]))
 
-        # CSV へ保存
-        self.save_all(recipes)
+        for idx, step_text in enumerate(data["steps"], start=1):
+            cur.execute("""
+                INSERT INTO steps (recipe_id, step_no, text)
+                VALUES (?, ?, ?)
+            """, (recipe_id, idx, step_text))
 
-        return new_id
+        self.conn.commit()
+        return recipe_id
+
+    # レシピ更新
+    def update(self, recipe_id, data):
+        cur = self.conn.cursor()
+
+        cur.execute("""
+            UPDATE recipes
+            SET title = ?, image_path = ?
+            WHERE id = ?
+        """, (data["title"], data["image_path"], recipe_id))
+
+        cur.execute("DELETE FROM ingredients WHERE recipe_id = ?", (recipe_id,))
+        for ing in data["ingredients"]:
+            cur.execute("""
+                INSERT INTO ingredients (recipe_id, name, amount)
+                VALUES (?, ?, ?)
+            """, (recipe_id, ing["name"], ing["amount"]))
+
+        cur.execute("DELETE FROM steps WHERE recipe_id = ?", (recipe_id,))
+        for idx, step_text in enumerate(data["steps"], start=1):
+            cur.execute("""
+                INSERT INTO steps (recipe_id, step_no, text)
+                VALUES (?, ?, ?)
+            """, (recipe_id, idx, step_text))
+
+        self.conn.commit()
+
+    # レシピ一覧取得
+    def load_all(self):
+        cur = self.conn.cursor()
+        cur.execute("SELECT * FROM recipes ORDER BY id ASC")
+        rows = cur.fetchall()
+        return [dict(row) for row in rows]
+
+    # レシピ詳細取得
+    def find_by_id(self, recipe_id):
+        cur = self.conn.cursor()
+
+        cur.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,))
+        recipe = cur.fetchone()
+        if not recipe:
+            return None
+
+        recipe = dict(recipe)
+
+        cur.execute("""
+            SELECT name, amount
+            FROM ingredients
+            WHERE recipe_id = ?
+        """, (recipe_id,))
+        recipe["ingredients"] = [dict(row) for row in cur.fetchall()]
+
+        cur.execute("""
+            SELECT step_no, text
+            FROM steps
+            WHERE recipe_id = ?
+            ORDER BY step_no ASC
+        """, (recipe_id,))
+        recipe["steps"] = [dict(row) for row in cur.fetchall()]
+
+        return recipe
+
+    # レシピ削除
+    def delete(self, recipe_id):
+        cur = self.conn.cursor()
+
+        cur.execute("DELETE FROM ingredients WHERE recipe_id = ?", (recipe_id,))
+        cur.execute("DELETE FROM steps WHERE recipe_id = ?", (recipe_id,))
+        cur.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
+
+        self.conn.commit()

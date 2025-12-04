@@ -5,10 +5,11 @@ from PIL import ImageTk
 from model.recipe_model import RecipeModel
 from utils.image_manager import ImageManager
 from view.common_header import CommonHeader
+from view.components.scroll_frame import ScrollFrame
 
 
 class DetailView(ttk.Frame):
-    # 詳細画面（画像・材料・ステップ・次へ戻る）
+    # レシピ詳細画面（動的材料・動的手順＋スクロール安定＋ヘッダー固定）
 
     def __init__(self, parent, controller, recipe_id):
         ttk.Frame.__init__(self, parent)
@@ -17,100 +18,51 @@ class DetailView(ttk.Frame):
         self.model = RecipeModel()
         self.image_manager = ImageManager()
 
-        # 現在のレシピ ID とインデックス管理
-        self.recipes = self.model.load_all()
-        self.current_index = self._get_recipe_index(recipe_id)
+        self.configure(style="Base.TFrame")
 
-        # ヘッダー表示
-        self.header = CommonHeader(self, controller)
-        self.header.pack(fill="x")
+        recipe = self.model.find_by_id(recipe_id)
+        if not recipe:
+            return
+        self.recipe = recipe
 
-        # タイトル表示用ラベル
-        self.title_label = ttk.Label(self, text="", font=("Arial", 18, "bold"))
-        self.title_label.pack(pady=10)
+        # ヘッダー（固定）
+        header = CommonHeader(self, controller)
+        header.pack(fill="x")
 
-        # メインコンテンツフレーム（画像＋材料）
-        content_frame = ttk.Frame(self)
-        content_frame.pack(fill="x", pady=10)
+        # ScrollFrame（中身のみスクロール）
+        scroll = ScrollFrame(self)
+        scroll.pack(fill="both", expand=True)
 
-        # 左：画像フレーム
-        self.image_label = ttk.Label(content_frame)
-        self.image_label.grid(row=0, column=0, padx=20)
+        content = scroll.inner
 
-        # 右：材料一覧フレーム
-        self.ingredients_frame = ttk.Frame(content_frame)
-        self.ingredients_frame.grid(row=0, column=1, padx=20)
+        title_label = ttk.Label(content, text=recipe["title"], style="Title.TLabel")
+        title_label.pack(pady=15)
 
-        # 下：作り方フレーム
-        self.steps_frame = ttk.Frame(self)
-        self.steps_frame.pack(fill="x", padx=20, pady=20)
+        mid = ttk.Frame(content, style="Base.TFrame")
+        mid.pack(fill="x", padx=20, pady=10)
 
-        # 最下段：戻る / 次へ ボタン
-        nav_frame = ttk.Frame(self)
-        nav_frame.pack(pady=10)
+        img_card = ttk.Frame(mid, style="Card.TFrame", padding=10)
+        img_card.grid(row=0, column=0, padx=20, pady=5)
 
-        self.prev_button = ttk.Button(
-            nav_frame,
-            text="戻る",
-            command=self.show_prev
-        )
-        self.prev_button.pack(side="left", padx=20)
+        img = self.image_manager.get_detail_image(recipe["image_path"])
+        self.tk_img = ImageTk.PhotoImage(img)
 
-        self.next_button = ttk.Button(
-            nav_frame,
-            text="次へ",
-            command=self.show_next
-        )
-        self.next_button.pack(side="left", padx=20)
+        ttk.Label(img_card, image=self.tk_img, background="#FFFFFF").pack()
 
-        # レシピ内容を初回表示
-        self.update_view()
+        ing_card = ttk.Frame(mid, style="Card.TFrame", padding=15)
+        ing_card.grid(row=0, column=1, padx=20, pady=5, sticky="n")
 
-    # 指定 ID のレシピインデックスを取得する
-    def _get_recipe_index(self, recipe_id):
-        for i, r in enumerate(self.recipes):
-            if r["id"] == str(recipe_id):
-                return i
-        return 0
+        ttk.Label(ing_card, text="材料", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
-    # 画面表示を更新する
-    def update_view(self):
-        recipe = self.recipes[self.current_index]
+        for ing in recipe["ingredients"]:
+            line = f"{ing['name']} … {ing['amount']}"
+            ttk.Label(ing_card, text=line, style="TLabel").pack(anchor="w", pady=2)
 
-        # タイトル
-        self.title_label.config(text=recipe["title"])
+        steps_card = ttk.Frame(content, style="Card.TFrame", padding=15)
+        steps_card.pack(fill="x", padx=20, pady=20)
 
-        # 画像表示
-        image = self.image_manager.get_detail_image(recipe["image_path"])
-        self.tk_image = ImageTk.PhotoImage(image)  # 保存しないとGCで消える
-        self.image_label.config(image=self.tk_image)
+        ttk.Label(steps_card, text="作り方", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
-        # 材料一覧をクリアして再描画
-        for widget in self.ingredients_frame.winfo_children():
-            widget.destroy()
-
-        ttk.Label(self.ingredients_frame, text="材料", font=("Arial", 14, "bold")).pack(anchor="w")
-
-        for i in range(1, 10):
-            ing = recipe.get(f"ingredient{i}", "")
-            ttk.Label(self.ingredients_frame, text=f"{i}. {ing}").pack(anchor="w")
-
-        # 作り方一覧をクリアして再描画
-        for widget in self.steps_frame.winfo_children():
-            widget.destroy()
-
-        ttk.Label(self.steps_frame, text="作り方", font=("Arial", 14, "bold")).pack(anchor="w")
-
-        for i in range(1, 7):
-            step = recipe.get(f"step{i}", "")
-            ttk.Label(self.steps_frame, text=f"{i}. {step}").pack(anchor="w", pady=2)
-
-    # 前のレシピへ移動（ループ式）
-    def show_prev(self):
-        self.current_index = (self.current_index - 1) % len(self.recipes)
-        self.update_view()
-
-    # 次のレシピへ移動（ループ式）
-    def show_next(self):
-        self.current_index = (self.current_index + 1) % len(self.recipes)
-        self.update_view()
+        for step in recipe["steps"]:
+            s = f"{step['step_no']}. {step['text']}"
+            ttk.Label(steps_card, text=s, style="TLabel").pack(anchor="w", pady=3)

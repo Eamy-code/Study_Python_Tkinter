@@ -1,42 +1,48 @@
 import tkinter as tk
 from tkinter import ttk
 
+
 class CommonHeader(ttk.Frame):
-    # 共通ヘッダー（RecipeDesk タイトル・画面遷移ボタン）
+    # ナチュラルで柔らかい印象の共通ヘッダー
 
     def __init__(self, parent, controller):
         ttk.Frame.__init__(self, parent)
 
         self.controller = controller
 
+        # 背景色（Header自身に設定）
+        self.configure(style="Header.TFrame")
+
         # タイトルラベル
-        self.title_label = ttk.Label(
+        title = ttk.Label(
             self,
             text="RecipeDesk",
-            font=("Arial", 20, "bold")
+            style="HeaderTitle.TLabel"
         )
-        self.title_label.grid(row=0, column=0, sticky="w", padx=10, pady=10)
+        title.grid(row=0, column=0, sticky="w", padx=20, pady=15)
 
-        # ボタンをまとめるフレーム（右寄せ）
-        self.button_frame = ttk.Frame(self)
-        self.button_frame.grid(row=0, column=1, sticky="e", padx=10)
+        # 右側ボタンまとめフレーム
+        btn_frame = ttk.Frame(self, style="Header.TFrame")
+        btn_frame.grid(row=0, column=1, sticky="e", padx=20)
 
-        # 一覧ページへ遷移するボタン
-        self.list_button = ttk.Button(
-            self.button_frame,
+        # 一覧へ
+        list_btn = ttk.Button(
+            btn_frame,
             text="一覧へ",
+            style="Header.TButton",
             command=self.controller.show_list_view
         )
-        self.list_button.pack(side="left", padx=5)
+        list_btn.pack(side="left", padx=5)
 
-        # 登録ページへ遷移するボタン
-        self.create_button = ttk.Button(
-            self.button_frame,
+        # 登録へ
+        create_btn = ttk.Button(
+            btn_frame,
             text="登録へ",
+            style="Header.TButton",
             command=self.controller.show_create_view
         )
-        self.create_button.pack(side="left", padx=5)
+        create_btn.pack(side="left", padx=5)
 
-        # グリッド調整（左が可変幅、右は固定）
+        # グリッド調整
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=0)
