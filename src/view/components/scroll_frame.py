@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 
-# 任意の画面をスクロール可能にする共通コンポーネント
+
+# 縦スクロール＋マウスホイール対応の共通スクロールコンテナ
 class ScrollFrame(ttk.Frame):
 
     def __init__(self, parent):
@@ -15,23 +16,43 @@ class ScrollFrame(ttk.Frame):
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.scrollbar.pack(side="right", fill="y")
 
-        # Canvas と Scrollbar の紐付け
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        # 内部フレーム
-        self.inner = ttk.Frame(self, style="Base.TFrame")
+        # inner Frame
+        self.inner = ttk.Frame(self.canvas, style="Base.TFrame")
         self.window = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
 
-        # 内部フレームのサイズに応じてスクロール領域更新
+        # サイズ変更時のスクロール領域更新
         self.inner.bind("<Configure>", self._update_scrollregion)
-
-        # Canvas 自体のサイズ変更に応じて inner の幅を合わせる
         self.canvas.bind("<Configure>", self._resize_inner)
 
-    # スクロール領域を更新
+        # マウスホイール対応
+        self.bind_events()
+
+    # スクロール領域更新
     def _update_scrollregion(self, event=None):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-    # inner の幅を Canvas に合わせる
+    # inner の幅を canvas に合わせる
     def _resize_inner(self, event):
         self.canvas.itemconfig(self.window, width=event.width)
+
+    # マウスホイールイベントの紐付け
+    def bind_events(self):
+        # Windows / Linux
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        # Mac（ホイールイベント名が異なる）
+        self.canvas.bind_all("<Button-4>", self._on_mousewheel_mac)
+        self.canvas.bind_all("<Button-5>", self._on_mousewheel_mac)
+
+    # Windows / Linux 用スクロール
+    def _on_mousewheel(self, event):
+        # event.delta は Windows で120単位、Linuxは±1が来る
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    # Mac 用スクロール
+    def _on_mousewheel_mac(self, event):
+        if event.num == 4:  # 上スクロール
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5:  # 下スクロール
+            self.canvas.yview_scroll(1, "units")
