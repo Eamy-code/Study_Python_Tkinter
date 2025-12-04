@@ -5,112 +5,126 @@ from PIL import ImageTk
 from model.recipe_model import RecipeModel
 from utils.image_manager import ImageManager
 from view.common_header import CommonHeader
+from view.components.scroll_frame import ScrollFrame
 
 
 class DetailView(ttk.Frame):
-    # 詳細画面（画像・材料・ステップ・次へ戻る）
+    # 詳細画面（スクロール対応・ナチュラルデザイン）
 
     def __init__(self, parent, controller, recipe_id):
         ttk.Frame.__init__(self, parent)
-
         self.controller = controller
         self.model = RecipeModel()
         self.image_manager = ImageManager()
 
-        # 現在のレシピ ID とインデックス管理
+        self.configure(style="Base.TFrame")
+
+        # ScrollFrame で全体を包む
+        scroll = ScrollFrame(self)
+        scroll.pack(fill="both", expand=True)
+
+        content = scroll.inner
+
+        # レシピ全件読み込み
         self.recipes = self.model.load_all()
-        self.current_index = self._get_recipe_index(recipe_id)
+        self.current_index = self.get_recipe_index(recipe_id)
 
-        # ヘッダー表示
-        self.header = CommonHeader(self, controller)
-        self.header.pack(fill="x")
+        # ヘッダー
+        header = CommonHeader(content, controller)
+        header.pack(fill="x")
 
-        # タイトル表示用ラベル
-        self.title_label = ttk.Label(self, text="", font=("Arial", 18, "bold"))
-        self.title_label.pack(pady=10)
+        # タイトル
+        self.title_label = ttk.Label(content, text="", style="Title.TLabel")
+        self.title_label.pack(pady=15)
 
-        # メインコンテンツフレーム（画像＋材料）
-        content_frame = ttk.Frame(self)
-        content_frame.pack(fill="x", pady=10)
+        # 画像 + 材料エリア
+        mid_frame = ttk.Frame(content, style="Base.TFrame")
+        mid_frame.pack(fill="x", padx=20, pady=10)
 
-        # 左：画像フレーム
-        self.image_label = ttk.Label(content_frame)
-        self.image_label.grid(row=0, column=0, padx=20)
+        # 画像カード
+        self.image_frame = ttk.Frame(mid_frame, style="Card.TFrame", padding=10)
+        self.image_frame.grid(row=0, column=0, padx=20, pady=5)
 
-        # 右：材料一覧フレーム
-        self.ingredients_frame = ttk.Frame(content_frame)
-        self.ingredients_frame.grid(row=0, column=1, padx=20)
+        self.image_label = ttk.Label(self.image_frame, background="#FFFFFF")
+        self.image_label.pack()
 
-        # 下：作り方フレーム
-        self.steps_frame = ttk.Frame(self)
+        # 材料カード
+        self.ingredients_frame = ttk.Frame(mid_frame, style="Card.TFrame", padding=15)
+        self.ingredients_frame.grid(row=0, column=1, padx=20, pady=5, sticky="n")
+
+        # 作り方カード
+        self.steps_frame = ttk.Frame(content, style="Card.TFrame", padding=15)
         self.steps_frame.pack(fill="x", padx=20, pady=20)
 
-        # 最下段：戻る / 次へ ボタン
-        nav_frame = ttk.Frame(self)
+        # 戻る/次へ
+        nav_frame = ttk.Frame(content, style="Base.TFrame")
         nav_frame.pack(pady=10)
 
-        self.prev_button = ttk.Button(
+        ttk.Button(
             nav_frame,
             text="戻る",
+            style="Header.TButton",
             command=self.show_prev
-        )
-        self.prev_button.pack(side="left", padx=20)
+        ).pack(side="left", padx=20)
 
-        self.next_button = ttk.Button(
+        ttk.Button(
             nav_frame,
             text="次へ",
+            style="Header.TButton",
             command=self.show_next
-        )
-        self.next_button.pack(side="left", padx=20)
+        ).pack(side="left", padx=20)
 
-        # レシピ内容を初回表示
+        # 初回表示
         self.update_view()
 
-    # 指定 ID のレシピインデックスを取得する
-    def _get_recipe_index(self, recipe_id):
+    # レシピIDのインデックス取得
+    def get_recipe_index(self, recipe_id):
         for i, r in enumerate(self.recipes):
             if r["id"] == str(recipe_id):
                 return i
         return 0
 
-    # 画面表示を更新する
+    # 表示更新
     def update_view(self):
         recipe = self.recipes[self.current_index]
 
-        # タイトル
         self.title_label.config(text=recipe["title"])
 
-        # 画像表示
-        image = self.image_manager.get_detail_image(recipe["image_path"])
-        self.tk_image = ImageTk.PhotoImage(image)  # 保存しないとGCで消える
-        self.image_label.config(image=self.tk_image)
+        # 画像
+        img = self.image_manager.get_detail_image(recipe["image_path"])
+        self.tk_img = ImageTk.PhotoImage(img)
+        self.image_label.config(image=self.tk_img)
 
-        # 材料一覧をクリアして再描画
-        for widget in self.ingredients_frame.winfo_children():
-            widget.destroy()
+        # 材料
+        for w in self.ingredients_frame.winfo_children():
+            w.destroy()
 
-        ttk.Label(self.ingredients_frame, text="材料", font=("Arial", 14, "bold")).pack(anchor="w")
+        ttk.Label(self.ingredients_frame, text="材料", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
         for i in range(1, 10):
-            ing = recipe.get(f"ingredient{i}", "")
-            ttk.Label(self.ingredients_frame, text=f"{i}. {ing}").pack(anchor="w")
+            ttk.Label(
+                self.ingredients_frame,
+                text=f"{i}. {recipe.get(f'ingredient{i}', '')}",
+                style="TLabel"
+            ).pack(anchor="w", pady=2)
 
-        # 作り方一覧をクリアして再描画
-        for widget in self.steps_frame.winfo_children():
-            widget.destroy()
+        # 作り方
+        for w in self.steps_frame.winfo_children():
+            w.destroy()
 
-        ttk.Label(self.steps_frame, text="作り方", font=("Arial", 14, "bold")).pack(anchor="w")
+        ttk.Label(self.steps_frame, text="作り方", style="Heading.TLabel").pack(anchor="w", pady=(0, 10))
 
         for i in range(1, 7):
-            step = recipe.get(f"step{i}", "")
-            ttk.Label(self.steps_frame, text=f"{i}. {step}").pack(anchor="w", pady=2)
+            ttk.Label(
+                self.steps_frame,
+                text=f"{i}. {recipe.get(f'step{i}', '')}",
+                style="TLabel"
+            ).pack(anchor="w", pady=3)
 
-    # 前のレシピへ移動（ループ式）
     def show_prev(self):
         self.current_index = (self.current_index - 1) % len(self.recipes)
         self.update_view()
 
-    # 次のレシピへ移動（ループ式）
     def show_next(self):
         self.current_index = (self.current_index + 1) % len(self.recipes)
         self.update_view()

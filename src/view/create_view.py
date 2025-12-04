@@ -5,10 +5,11 @@ from PIL import ImageTk
 from model.recipe_model import RecipeModel
 from utils.image_manager import ImageManager
 from view.common_header import CommonHeader
+from view.components.scroll_frame import ScrollFrame
 
 
 class CreateView(ttk.Frame):
-    # レシピ登録画面（タイトル・材料・手順・画像アップロード）
+    # レシピ登録画面（スクロール対応＋ナチュラルデザイン）
 
     def __init__(self, parent, controller):
         ttk.Frame.__init__(self, parent)
@@ -17,108 +18,106 @@ class CreateView(ttk.Frame):
         self.model = RecipeModel()
         self.image_manager = ImageManager()
 
-        self.selected_image_path = ""  # 選択された元画像パス
-        self.preview_image = None      # プレビュー保持用（GC防止）
+        self.selected_image_path = ""
+        self.preview_image = None
 
-        # ヘッダー表示
-        self.header = CommonHeader(self, controller)
-        self.header.pack(fill="x")
+        self.configure(style="Base.TFrame")
 
-        # メインフォームフレーム
-        form = ttk.Frame(self)
-        form.pack(fill="x", padx=20, pady=10)
+        # ScrollFrame で全体を包む
+        scroll = ScrollFrame(self)
+        scroll.pack(fill="both", expand=True)
 
-        # タイトル
-        ttk.Label(form, text="タイトル", font=("Arial", 14, "bold")).pack(anchor="w")
-        self.title_entry = ttk.Entry(form, width=40)
-        self.title_entry.pack(anchor="w", pady=5)
+        content = scroll.inner
 
-        # 材料入力
-        ttk.Label(form, text="材料（1～9）", font=("Arial", 14, "bold")).pack(anchor="w", pady=(10, 0))
+        # ヘッダー
+        header = CommonHeader(content, controller)
+        header.pack(fill="x")
 
+        # フォームカード
+        form_card = ttk.Frame(content, style="Card.TFrame", padding=20)
+        form_card.pack(padx=30, pady=20, fill="x")
+
+        ttk.Label(form_card, text="タイトル", style="Heading.TLabel").pack(anchor="w")
+        self.title_entry = ttk.Entry(form_card, width=50)
+        self.title_entry.pack(anchor="w", pady=(0, 15))
+
+        # 材料
+        ttk.Label(form_card, text="材料（1〜9）", style="Heading.TLabel").pack(anchor="w", pady=(0, 5))
         self.ingredient_entries = []
         for i in range(1, 10):
-            entry = ttk.Entry(form, width=40)
-            entry.pack(anchor="w", pady=2)
+            entry = ttk.Entry(form_card, width=50)
+            entry.pack(anchor="w", pady=3)
             self.ingredient_entries.append(entry)
 
-        # 作り方入力
-        ttk.Label(form, text="作り方（1～6）", font=("Arial", 14, "bold")).pack(anchor="w", pady=(15, 0))
-
+        # 作り方
+        ttk.Label(form_card, text="作り方（1〜6）", style="Heading.TLabel").pack(anchor="w", pady=(20, 5))
         self.step_entries = []
         for i in range(1, 7):
-            entry = ttk.Entry(form, width=60)
-            entry.pack(anchor="w", pady=2)
+            entry = ttk.Entry(form_card, width=60)
+            entry.pack(anchor="w", pady=3)
             self.step_entries.append(entry)
 
-        # 画像アップロード部分
-        ttk.Label(form, text="画像", font=("Arial", 14, "bold")).pack(anchor="w", pady=(15, 0))
+        # 画像カード
+        ttk.Label(form_card, text="画像", style="Heading.TLabel").pack(anchor="w", pady=(20, 10))
 
-        img_frame = ttk.Frame(form)
-        img_frame.pack(anchor="w", pady=5)
+        img_frame = ttk.Frame(form_card, style="Card.TFrame", padding=10)
+        img_frame.pack(anchor="w")
 
-        # ファイル選択ボタン
-        select_button = ttk.Button(img_frame, text="ファイルを選択", command=self.select_image)
-        select_button.pack(side="left")
+        ttk.Button(
+            img_frame,
+            text="画像を選択",
+            style="Header.TButton",
+            command=self.select_image
+        ).pack(anchor="w")
 
-        # プレビューラベル
-        self.preview_label = ttk.Label(form)
-        self.preview_label.pack(anchor="w", pady=10)
+        self.preview_label = ttk.Label(img_frame, background="#FFFFFF")
+        self.preview_label.pack(pady=10)
 
         # Submit ボタン
-        submit_button = ttk.Button(self, text="登録（Submit）", command=self.submit)
-        submit_button.pack(pady=20)
+        ttk.Button(
+            content,
+            text="登録（Submit）",
+            style="Header.TButton",
+            command=self.submit
+        ).pack(pady=20)
 
-    # 画像を選択しプレビューを表示する
+    # 画像選択
     def select_image(self):
-        file_path = filedialog.askopenfilename(
-            filetypes=[("画像ファイル", "*.jpg *.jpeg *.png *.bmp *.gif")]
+        path = filedialog.askopenfilename(
+            filetypes=[("画像ファイル", "*.png *.jpg *.jpeg *.bmp *.gif")]
         )
-        if not file_path:
+        if not path:
             return
 
-        self.selected_image_path = file_path
+        self.selected_image_path = path
 
-        # プレビュー表示用画像
-        img = self.image_manager.get_thumbnail(file_path, size=(200, 200))
+        img = self.image_manager.get_thumbnail(path, size=(200, 200))
         self.preview_image = ImageTk.PhotoImage(img)
         self.preview_label.config(image=self.preview_image)
 
-    # 入力内容を CSV に保存する
+    # DB保存
     def submit(self):
         title = self.title_entry.get()
-
-        # タイトルは必須
         if not title:
             tk.messagebox.showerror("エラー", "タイトルは必須です。")
             return
 
-        # 材料・手順の収集
         ingredients = [e.get() for e in self.ingredient_entries]
         steps = [e.get() for e in self.step_entries]
 
-        # 画像のコピー処理
-        saved_image_path = ""
+        img_path = ""
         if self.selected_image_path:
-            saved_image_path = self.image_manager.copy_image(self.selected_image_path)
+            img_path = self.image_manager.copy_image(self.selected_image_path)
 
-        # CSV に渡すデータ作成
-        data = {
-            "title": title,
-            "image_path": saved_image_path
-        }
+        data = {"title": title, "image_path": img_path}
 
-        # 材料をセット
-        for i, v in enumerate(ingredients, start=1):
-            data[f"ingredient{i}"] = v
+        for i in range(1, 10):
+            data[f"ingredient{i}"] = ingredients[i - 1]
 
-        # 手順をセット
-        for i, v in enumerate(steps, start=1):
-            data[f"step{i}"] = v
+        for i in range(1, 7):
+            data[f"step{i}"] = steps[i - 1]
 
-        # 登録処理
         self.model.insert(data)
 
-        # 登録完了 → 一覧へ
-        tk.messagebox.showinfo("登録完了", "レシピを登録しました。")
+        tk.messagebox.showinfo("完了", "レシピを登録しました")
         self.controller.show_list_view()

@@ -7,7 +7,7 @@ class RecipeModel:
 
     def __init__(self):
         # DBファイルのパス
-        self.db_path = "src/database/recipe.db"
+        self.db_path = "../src/database/recipe.db"
 
         # ディレクトリが無ければ作成
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)

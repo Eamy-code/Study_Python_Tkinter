@@ -7,7 +7,7 @@ class ImageManager:
 
     def __init__(self):
         # 画像保存先フォルダのパス
-        self.image_dir = "src/images"
+        self.image_dir = "../src/images"
 
         # デフォルト画像のパス
         self.default_image_path = os.path.join(self.image_dir, "default.png")
