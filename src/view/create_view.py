@@ -9,7 +9,7 @@ from view.components.scroll_frame import ScrollFrame
 
 
 class CreateView(ttk.Frame):
-    # レシピ登録画面（レスポンシブ対応 + ナチュラルデザイン）
+    # レシピ登録画面（スクロール対応＋レスポンシブ）
 
     def __init__(self, parent, controller):
         ttk.Frame.__init__(self, parent)
@@ -21,10 +21,9 @@ class CreateView(ttk.Frame):
         self.selected_image_path = ""
         self.preview_image = None
 
-        # 画面背景
         self.configure(style="Base.TFrame")
 
-        # ScrollFrame（縦スクロール対応）
+        # ScrollFrame（縦スクロール）
         scroll = ScrollFrame(self)
         scroll.pack(fill="both", expand=True)
 
@@ -34,72 +33,54 @@ class CreateView(ttk.Frame):
         header = CommonHeader(content, controller)
         header.pack(fill="x")
 
-        # レスポンシブのため columnconfigure を設定
-        content.columnconfigure(0, weight=1)
-
-        # フォームカード
+        # フォームカード（レスポンシブ）
         form_card = ttk.Frame(content, style="Card.TFrame", padding=20)
-        form_card.grid(row=0, column=0, padx=30, pady=20, sticky="ew")
-
-        # カード内もレスポンシブに
-        form_card.columnconfigure(0, weight=1)
+        form_card.pack(fill="x", padx=30, pady=20)
 
         # タイトル
-        ttk.Label(form_card, text="タイトル", style="Heading.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(form_card, text="タイトル", style="Heading.TLabel").pack(anchor="w")
         self.title_entry = ttk.Entry(form_card)
-        self.title_entry.grid(row=1, column=0, sticky="ew", pady=(0, 15))
+        self.title_entry.pack(anchor="w", fill="x", pady=(0, 15))
 
         # 材料
-        ttk.Label(form_card, text="材料（1〜9）", style="Heading.TLabel").grid(row=2, column=0, sticky="w", pady=(0, 5))
-
+        ttk.Label(form_card, text="材料（1〜9）", style="Heading.TLabel").pack(anchor="w", pady=(0, 5))
         self.ingredient_entries = []
-        row_counter = 3
         for i in range(1, 10):
             entry = ttk.Entry(form_card)
-            entry.grid(row=row_counter, column=0, sticky="ew", pady=3)
+            entry.pack(anchor="w", fill="x", pady=3)
             self.ingredient_entries.append(entry)
-            row_counter += 1
 
         # 作り方
-        ttk.Label(form_card, text="作り方（1〜6）", style="Heading.TLabel").grid(row=row_counter, column=0, sticky="w", pady=(20, 5))
-        row_counter += 1
-
+        ttk.Label(form_card, text="作り方（1〜6）", style="Heading.TLabel").pack(anchor="w", pady=(20, 5))
         self.step_entries = []
-        for i in range(1, 7):
+        for i in range(1, 6 + 1):
             entry = ttk.Entry(form_card)
-            entry.grid(row=row_counter, column=0, sticky="ew", pady=3)
+            entry.pack(anchor="w", fill="x", pady=3)
             self.step_entries.append(entry)
-            row_counter += 1
 
-        # 画像カード（フォーム幅に追従）
-        ttk.Label(form_card, text="画像", style="Heading.TLabel").grid(row=row_counter, column=0, sticky="w", pady=(20, 10))
-        row_counter += 1
+        # 画像カード
+        ttk.Label(form_card, text="画像", style="Heading.TLabel").pack(anchor="w", pady=(20, 10))
 
         img_card = ttk.Frame(form_card, style="Card.TFrame", padding=10)
-        img_card.grid(row=row_counter, column=0, sticky="ew")
-        img_card.columnconfigure(0, weight=1)
-        row_counter += 1
+        img_card.pack(anchor="w", fill="x")
 
         ttk.Button(
             img_card,
             text="画像を選択",
             style="Header.TButton",
             command=self.select_image
-        ).grid(row=0, column=0, sticky="w")
+        ).pack(anchor="w")
 
         self.preview_label = ttk.Label(img_card, background="#FFFFFF")
-        self.preview_label.grid(row=1, column=0, pady=10, sticky="w")
+        self.preview_label.pack(pady=10)
 
-        # Submit ボタン（中央寄せしたいので別フレーム）
-        submit_area = ttk.Frame(content, style="Base.TFrame")
-        submit_area.grid(row=1, column=0, pady=20, sticky="n")
-
+        # Submit ボタン（中央寄せ）
         ttk.Button(
-            submit_area,
+            content,
             text="登録（Submit）",
             style="Header.TButton",
             command=self.submit
-        ).pack()
+        ).pack(pady=20)
 
     # 画像選択
     def select_image(self):
@@ -118,6 +99,7 @@ class CreateView(ttk.Frame):
     # DB保存
     def submit(self):
         title = self.title_entry.get()
+
         if not title:
             tk.messagebox.showerror("エラー", "タイトルは必須です。")
             return
@@ -129,7 +111,10 @@ class CreateView(ttk.Frame):
         if self.selected_image_path:
             img_path = self.image_manager.copy_image(self.selected_image_path)
 
-        data = {"title": title, "image_path": img_path}
+        data = {
+            "title": title,
+            "image_path": img_path
+        }
 
         for i in range(1, 10):
             data[f"ingredient{i}"] = ingredients[i - 1]
