@@ -37,3 +37,10 @@ class AppController:
         self.clear_view()
         self.current_view = CreateView(self.root, self)
         self.current_view.pack(fill="both", expand=True)
+
+    # 編集画面を表示する
+    def show_edit_view(self, recipe_id):
+        self.clear_view()
+        from view.edit_view import EditView
+        self.current_view = EditView(self.root, self, recipe_id)
+        self.current_view.pack(fill="both", expand=True)
