@@ -2,9 +2,8 @@ import os
 import shutil
 from PIL import Image
 
-# 画像管理クラス（コピー・リサイズ・ロード）
 class ImageManager:
-
+    # 画像管理クラス（コピー・リサイズ・ロード）
 
     def __init__(self):
         # 画像保存先フォルダのパス
@@ -17,7 +16,7 @@ class ImageManager:
         if not os.path.exists(self.image_dir):
             os.makedirs(self.image_dir, exist_ok=True)
 
-# パスを正規化して返す
+    # パスを正規化して返す
     def normalize_path(self, path):
         return os.path.normpath(path)
 
@@ -52,8 +51,8 @@ class ImageManager:
             return ""
 
         return self.normalize_path(dest_path)
-    
-     # 画像を読み込む（失敗したらデフォルト画像）
+
+    # 画像を読み込む（失敗したらデフォルト画像）
     def load_image(self, path):
         # パスが無い場合 → デフォルト
         if not path or not os.path.exists(path):
@@ -78,5 +77,3 @@ class ImageManager:
     def get_detail_image(self, path, size=(300, 200)):
         image = self.load_image(path)
         return self.resize_image(image, size[0], size[1])
-
-
