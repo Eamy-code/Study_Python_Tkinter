@@ -11,7 +11,7 @@ class ImageManager:
         base_dir = os.path.dirname(os.path.abspath(__file__))
 
         # images フォルダの絶対パス
-        self.image_dir = os.path.join(base_dir, "../../src/images")
+        self.image_dir = os.path.join(base_dir, "../src/images")
 
         # デフォルト画像の絶対パス
         self.default_image_path = os.path.join(self.image_dir, "default.png")
