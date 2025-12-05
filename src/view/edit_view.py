@@ -35,7 +35,7 @@ class EditView(ttk.Frame):
         scroll.pack(fill="both", expand=True)
         content = scroll.inner
 
-        # フォームカード
+        # フォーム
         form = ttk.Frame(content, style="Card.TFrame", padding=20)
         form.pack(fill="x", padx=30, pady=20)
 
@@ -55,10 +55,8 @@ class EditView(ttk.Frame):
         for ing in self.recipe["ingredients"]:
             self.add_ingredient_row(name=ing["name"], amount=ing["amount"])
 
-        ttk.Button(
-            form, text="+ 材料を追加", style="Header.TButton",
-            command=self.add_ingredient_row
-        ).pack(anchor="w", pady=10)
+        ttk.Button(form, text="+ 材料を追加", style="Header.TButton",
+                   command=self.add_ingredient_row).pack(anchor="w", pady=10)
 
         # 作り方
         ttk.Label(form, text="作り方", style="Heading.TLabel").pack(anchor="w", pady=(20, 5))
@@ -70,31 +68,25 @@ class EditView(ttk.Frame):
         for step in self.recipe["steps"]:
             self.add_step_row(text=step["text"])
 
-        ttk.Button(
-            form, text="+ 作り方を追加", style="Header.TButton",
-            command=self.add_step_row
-        ).pack(anchor="w", pady=10)
+        ttk.Button(form, text="+ 作り方を追加", style="Header.TButton",
+                   command=self.add_step_row).pack(anchor="w", pady=10)
 
         # 画像
         ttk.Label(form, text="画像", style="Heading.TLabel").pack(anchor="w", pady=(20, 10))
         img_card = ttk.Frame(form, style="Card.TFrame", padding=10)
         img_card.pack(fill="x")
 
-        ttk.Button(
-            img_card, text="画像を選択", style="Header.TButton",
-            command=self.select_image
-        ).pack(anchor="w")
+        ttk.Button(img_card, text="画像を選択", style="Header.TButton",
+                   command=self.select_image).pack(anchor="w")
 
         img = self.image_manager.get_thumbnail(self.selected_image_path, size=(200, 200))
         self.preview_image = ImageTk.PhotoImage(img)
         self.preview_label = ttk.Label(img_card, image=self.preview_image)
         self.preview_label.pack()
 
-        # Submit
-        ttk.Button(
-            content, text="更新（Update）", style="Header.TButton",
-            command=self.update_recipe
-        ).pack(pady=20)
+        # 更新ボタン
+        ttk.Button(content, text="更新（Update）", style="Header.TButton",
+                   command=self.update_recipe).pack(pady=20)
 
     # 材料行追加
     def add_ingredient_row(self, name="", amount=""):
@@ -109,10 +101,8 @@ class EditView(ttk.Frame):
         amount_entry.insert(0, amount)
         amount_entry.pack(side="left", padx=(0, 5))
 
-        del_btn = ttk.Button(
-            row, text="−", width=2,
-            command=lambda rf=row: self.remove_ingredient_row(rf)
-        )
+        del_btn = ttk.Button(row, text="−", width=2,
+                             command=lambda rf=row: self.remove_ingredient_row(rf))
         del_btn.pack(side="left")
 
         self.ingredient_rows.append((row, name_entry, amount_entry))
@@ -134,10 +124,8 @@ class EditView(ttk.Frame):
         entry.insert(0, text)
         entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        del_btn = ttk.Button(
-            row, text="−", width=2,
-            command=lambda rf=row: self.remove_step_row(rf)
-        )
+        del_btn = ttk.Button(row, text="−", width=2,
+                             command=lambda rf=row: self.remove_step_row(rf))
         del_btn.pack(side="left")
 
         self.step_rows.append((row, entry))
@@ -163,7 +151,7 @@ class EditView(ttk.Frame):
         self.preview_image = ImageTk.PhotoImage(img)
         self.preview_label.config(image=self.preview_image)
 
-    # 更新ボタン押下
+    # 更新
     def update_recipe(self):
         title = self.title_entry.get()
         if not title:
@@ -181,9 +169,13 @@ class EditView(ttk.Frame):
         for frame, entry in self.step_rows:
             text = entry.get().strip()
             if text:
-                steps.append(text)
+                steps.append({"text": text})
 
-        img_path = self.selected_image_path
+        # 画像を必要に応じてコピー
+        if self.selected_image_path and self.selected_image_path != self.recipe["image_path"]:
+            img_path = self.image_manager.copy_image(self.selected_image_path)
+        else:
+            img_path = self.recipe["image_path"]
 
         data = {
             "title": title,

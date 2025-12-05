@@ -9,14 +9,11 @@ class RecipeModel:
     DB_PATH = os.path.join(BASE_DIR, "../data/recipe.db")
 
     def __init__(self):
-        # DB フォルダが無ければ作成
         os.makedirs(os.path.dirname(self.DB_PATH), exist_ok=True)
 
-        # DB 接続
         self.conn = sqlite3.connect(self.DB_PATH)
         self.conn.row_factory = sqlite3.Row
 
-        # テーブル作成
         self.create_tables()
 
     # テーブル作成
@@ -70,11 +67,11 @@ class RecipeModel:
                 VALUES (?, ?, ?)
             """, (recipe_id, ing["name"], ing["amount"]))
 
-        for idx, step_text in enumerate(data["steps"], start=1):
+        for idx, step in enumerate(data["steps"], start=1):
             cur.execute("""
                 INSERT INTO steps (recipe_id, step_no, text)
                 VALUES (?, ?, ?)
-            """, (recipe_id, idx, step_text))
+            """, (recipe_id, idx, step["text"]))
 
         self.conn.commit()
         return recipe_id
@@ -97,11 +94,11 @@ class RecipeModel:
             """, (recipe_id, ing["name"], ing["amount"]))
 
         cur.execute("DELETE FROM steps WHERE recipe_id = ?", (recipe_id,))
-        for idx, step_text in enumerate(data["steps"], start=1):
+        for idx, step in enumerate(data["steps"], start=1):
             cur.execute("""
                 INSERT INTO steps (recipe_id, step_no, text)
                 VALUES (?, ?, ?)
-            """, (recipe_id, idx, step_text))
+            """, (recipe_id, idx, step["text"]))
 
         self.conn.commit()
 
