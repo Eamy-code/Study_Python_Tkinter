@@ -75,10 +75,11 @@ class DetailView(ttk.Frame):
             s = f"{step['step_no']}. {step['text']}"
             ttk.Label(steps_card, text=s, style="TLabel").pack(anchor="w", pady=3)
 
-        # 編集＆削除ボタン
+        # 編集・削除・戻る ボタンエリア
         btn_area = ttk.Frame(content, style="Base.TFrame")
         btn_area.pack(pady=20)
 
+        # 編集ボタン
         edit_btn = ttk.Button(
             btn_area,
             text="編集する",
@@ -87,6 +88,7 @@ class DetailView(ttk.Frame):
         )
         edit_btn.pack(side="left", padx=10)
 
+        # 削除ボタン
         delete_btn = ttk.Button(
             btn_area,
             text="削除する",
@@ -94,6 +96,15 @@ class DetailView(ttk.Frame):
             command=self.delete_recipe
         )
         delete_btn.pack(side="left", padx=10)
+
+        # ★ 一覧へ戻るボタン（今回追加した部分）
+        back_btn = ttk.Button(
+            btn_area,
+            text="一覧へ戻る",
+            style="Header.TButton",
+            command=controller.show_list_view
+        )
+        back_btn.pack(side="left", padx=10)
 
     # 削除処理
     def delete_recipe(self):
