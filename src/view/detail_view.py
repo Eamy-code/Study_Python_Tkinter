@@ -97,7 +97,7 @@ class DetailView(ttk.Frame):
         )
         delete_btn.pack(side="left", padx=10)
 
-        # ★ 一覧へ戻るボタン（今回追加した部分）
+        # 一覧へ戻るボタン（今回追加した部分）
         back_btn = ttk.Button(
             btn_area,
             text="一覧へ戻る",
