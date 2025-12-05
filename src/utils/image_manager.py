@@ -11,7 +11,7 @@ class ImageManager:
         base_dir = os.path.dirname(os.path.abspath(__file__))
 
         # images フォルダの絶対パス
-        self.image_dir = os.path.join(base_dir, "../../src/images")
+        self.image_dir = os.path.join(base_dir, "../src/images")
 
         # デフォルト画像の絶対パス
         self.default_image_path = os.path.join(self.image_dir, "default.png")
@@ -44,19 +44,20 @@ class ImageManager:
 
         try:
             shutil.copy(src_path, dest_path)
-        except Exception:
+        except Exception as e:
+            print("Image copy error:", e)
             return ""
 
         return self.normalize_path(dest_path)
 
     # 画像ロード（失敗したらデフォルト）
     def load_image(self, path):
-        if not path or not os.path.exists(path):
-            return Image.open(self.default_image_path)
-
         try:
+            if not path or not os.path.exists(path):
+                return Image.open(self.default_image_path)
             return Image.open(path)
-        except:
+        except Exception as e:
+            print("Image load error:", e)
             return Image.open(self.default_image_path)
 
     # リサイズ

@@ -23,67 +23,60 @@ class CreateView(ttk.Frame):
 
         self.configure(style="Base.TFrame")
 
-        # ヘッダー（固定）
+        # ヘッダー
         header = CommonHeader(self, controller)
         header.pack(fill="x")
 
-        # ScrollFrame（中身のみスクロール）
+        # ScrollFrame
         scroll = ScrollFrame(self)
         scroll.pack(fill="both", expand=True)
-
         content = scroll.inner
 
         form = ttk.Frame(content, style="Card.TFrame", padding=20)
         form.pack(fill="x", padx=30, pady=20)
 
+        # タイトル
         ttk.Label(form, text="タイトル", style="Heading.TLabel").pack(anchor="w")
         self.title_entry = ttk.Entry(form)
         self.title_entry.pack(fill="x", pady=(0, 15))
 
-
+        # 材料
         ttk.Label(form, text="材料（材料名 ＋ 量）", style="Heading.TLabel").pack(anchor="w", pady=(10, 5))
         self.ingredients_frame = ttk.Frame(form, style="Base.TFrame")
         self.ingredients_frame.pack(fill="x")
+
         self.ingredient_rows = []
         self.add_ingredient_row()
 
-        ttk.Button(
-            form, text="+ 材料を追加", style="Header.TButton",
-            command=self.add_ingredient_row
-        ).pack(anchor="w", pady=10)
+        ttk.Button(form, text="+ 材料を追加", style="Header.TButton",
+                   command=self.add_ingredient_row).pack(anchor="w", pady=10)
 
-
+        # 作り方
         ttk.Label(form, text="作り方", style="Heading.TLabel").pack(anchor="w", pady=(20, 5))
         self.steps_frame = ttk.Frame(form, style="Base.TFrame")
         self.steps_frame.pack(fill="x")
+
         self.step_rows = []
         self.add_step_row()
 
-        ttk.Button(
-            form, text="+ 作り方を追加", style="Header.TButton",
-            command=self.add_step_row
-        ).pack(anchor="w", pady=10)
+        ttk.Button(form, text="+ 作り方を追加", style="Header.TButton",
+                   command=self.add_step_row).pack(anchor="w", pady=10)
 
-
+        # 画像
         ttk.Label(form, text="画像", style="Heading.TLabel").pack(anchor="w", pady=(20, 10))
 
         img_card = ttk.Frame(form, style="Card.TFrame", padding=10)
         img_card.pack(fill="x")
 
-        ttk.Button(
-            img_card, text="画像を選択", style="Header.TButton",
-            command=self.select_image
-        ).pack(anchor="w")
+        ttk.Button(img_card, text="画像を選択", style="Header.TButton",
+                   command=self.select_image).pack(anchor="w")
 
         self.preview_label = ttk.Label(img_card, background="#FFFFFF")
         self.preview_label.pack(pady=10)
 
-
-        ttk.Button(
-            content, text="登録（Submit）", style="Header.TButton",
-            command=self.submit
-        ).pack(pady=20)
-
+        # Submit
+        ttk.Button(content, text="登録（Submit）", style="Header.TButton",
+                   command=self.submit).pack(pady=20)
 
     # 材料行追加
     def add_ingredient_row(self):
@@ -96,15 +89,12 @@ class CreateView(ttk.Frame):
         amount = ttk.Entry(row, width=15)
         amount.pack(side="left", padx=(0, 5))
 
-        del_btn = ttk.Button(
-            row, text="−", width=2,
-            command=lambda rf=row: self.remove_ingredient_row(rf)
-        )
+        del_btn = ttk.Button(row, text="−", width=2,
+                             command=lambda rf=row: self.remove_ingredient_row(rf))
         del_btn.pack(side="left")
 
         self.ingredient_rows.append((row, name, amount))
 
-    # 材料削除
     def remove_ingredient_row(self, row):
         if len(self.ingredient_rows) <= 1:
             messagebox.showwarning("注意", "材料は最低 1 行必要です。")
@@ -121,15 +111,12 @@ class CreateView(ttk.Frame):
         entry = ttk.Entry(row)
         entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
-        del_btn = ttk.Button(
-            row, text="−", width=2,
-            command=lambda rf=row: self.remove_step_row(rf)
-        )
+        del_btn = ttk.Button(row, text="−", width=2,
+                             command=lambda rf=row: self.remove_step_row(rf))
         del_btn.pack(side="left")
 
         self.step_rows.append((row, entry))
 
-    # 手順削除
     def remove_step_row(self, row):
         if len(self.step_rows) <= 1:
             messagebox.showwarning("注意", "作り方は最低 1 行必要です。")
@@ -170,7 +157,7 @@ class CreateView(ttk.Frame):
         for frame, entry in self.step_rows:
             text = entry.get().strip()
             if text:
-                steps.append(text)
+                steps.append({"text": text})
 
         img_path = ""
         if self.selected_image_path:
